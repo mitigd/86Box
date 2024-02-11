@@ -697,91 +697,79 @@ video_update_timing(void)
     }
 }
 
-int
-calc_6to8(int c)
-{
-    int    ic;
-    int    i8;
-    double d8;
+int calc_6to8(int c) {
+    // Use a lookup table to avoid calculations and branching
+    static const int lookup[64] = {
+        0, 4, 8, 12, 16, 20, 24, 28,
+        32, 36, 40, 44, 48, 52, 56, 60,
+        64, 68, 72, 76, 80, 84, 88, 92,
+        96, 100, 104, 108, 112, 116, 120, 124,
+        128, 132, 136, 140, 144, 148, 152, 156,
+        160, 164, 168, 172, 176, 180, 184, 188,
+        192, 196, 200, 204, 208, 212, 216, 220,
+        224, 228, 232, 236, 240, 244, 248, 252
+    };
 
-    ic = c;
-    if (ic == 64)
-        ic = 63;
-    else
-        ic &= 0x3f;
-    d8 = (ic / 63.0) * 255.0;
-    i8 = (int) d8;
-
-    return (i8 & 0xff);
+    // Return the 8-bit color value from the lookup table
+    return lookup[c & 0x3f]; // Mask the lower 6 bits to ensure it is within the range [0, 63]
 }
 
-int
-calc_8to32(int c)
-{
-    int    b;
-    int    g;
-    int    r;
-    double db;
-    double dg;
-    double dr;
+int calc_8to32(int c) {
+    // Extracting and scaling factors for each color component
+    static const double BLUE_SCALE = 85.0; // 255 / 3
+    static const double GREEN_SCALE = 36.428571429; // 255 / 7
+    static const double RED_SCALE = 36.428571429; // 255 / 7
 
-    b  = (c & 3);
-    g  = ((c >> 2) & 7);
-    r  = ((c >> 5) & 7);
-    db = (((double) b) / 3.0) * 255.0;
-    dg = (((double) g) / 7.0) * 255.0;
-    dr = (((double) r) / 7.0) * 255.0;
-    b  = (int) db;
-    g  = ((int) dg) << 8;
-    r  = ((int) dr) << 16;
+    // Extract the blue, green, and red components from the 8-bit color value
+    int b = c & 0x03; // Extract the least significant 2 bits for blue
+    int g = (c >> 2) & 0x07; // Extract the next 3 bits for green
+    int r = (c >> 5) & 0x07; // Extract the next 3 bits for red
 
-    return (b | g | r);
+    // Scale and convert the blue, green, and red components directly to integers
+    int blue = (int)(b * BLUE_SCALE); // Scale the blue component
+    int green = (int)(g * GREEN_SCALE); // Scale the green component
+    int red = (int)(r * RED_SCALE); // Scale the red component
+
+    // Combine the blue, green, and red components into a single 32-bit color value and return it
+    return (blue | (green << 8) | (red << 16)); // Combine the components using bitwise OR operation
 }
 
-int
-calc_15to32(int c)
-{
-    int    b;
-    int    g;
-    int    r;
-    double db;
-    double dg;
-    double dr;
+int calc_15to32(int c) {
+    // Extracting and scaling factors for each color component
+    static const double SCALE_FACTOR = 8.225806452; // 255 / 31
 
-    b  = (c & 31);
-    g  = ((c >> 5) & 31);
-    r  = ((c >> 10) & 31);
-    db = (((double) b) / 31.0) * 255.0;
-    dg = (((double) g) / 31.0) * 255.0;
-    dr = (((double) r) / 31.0) * 255.0;
-    b  = (int) db;
-    g  = ((int) dg) << 8;
-    r  = ((int) dr) << 16;
+    // Extract the blue, green, and red components from the 15-bit color value
+    int b = c & 0x1F; // Extract the least significant 5 bits for blue
+    int g = (c >> 5) & 0x1F; // Extract the next 5 bits for green
+    int r = (c >> 10) & 0x1F; // Extract the next 5 bits for red
 
-    return (b | g | r);
+    // Scale and convert the blue, green, and red components directly to integers
+    int blue = (int)(b * SCALE_FACTOR); // Scale the blue component
+    int green = (int)(g * SCALE_FACTOR); // Scale the green component
+    int red = (int)(r * SCALE_FACTOR); // Scale the red component
+
+    // Combine the blue, green, and red components into a single 32-bit color value and return it
+    return (blue | (green << 8) | (red << 16)); // Combine the components using bitwise OR operation
 }
 
-int
-calc_16to32(int c)
-{
-    int    b;
-    int    g;
-    int    r;
-    double db;
-    double dg;
-    double dr;
+int calc_16to32(int c) {
+    // Extracting and scaling factors for each color component
+    static const double SCALE_FACTOR_B = 8.225806452; // 255 / 31
+    static const double SCALE_FACTOR_G = 4.047619048; // 255 / 63
+    static const double SCALE_FACTOR_R = 8.225806452; // 255 / 31
 
-    b  = (c & 31);
-    g  = ((c >> 5) & 63);
-    r  = ((c >> 11) & 31);
-    db = (((double) b) / 31.0) * 255.0;
-    dg = (((double) g) / 63.0) * 255.0;
-    dr = (((double) r) / 31.0) * 255.0;
-    b  = (int) db;
-    g  = ((int) dg) << 8;
-    r  = ((int) dr) << 16;
+    // Extract the blue, green, and red components from the 16-bit color value
+    int b = c & 0x1F; // Extract the least significant 5 bits for blue
+    int g = (c >> 5) & 0x3F; // Extract the next 6 bits for green
+    int r = (c >> 11) & 0x1F; // Extract the next 5 bits for red
 
-    return (b | g | r);
+    // Scale and convert the blue, green, and red components directly to integers
+    int blue = (int)(b * SCALE_FACTOR_B); // Scale the blue component
+    int green = (int)(g * SCALE_FACTOR_G); // Scale the green component
+    int red = (int)(r * SCALE_FACTOR_R); // Scale the red component
+
+    // Combine the blue, green, and red components into a single 32-bit color value and return it
+    return (blue | (green << 8) | (red << 16)); // Combine the components using bitwise OR operation
 }
 
 void
